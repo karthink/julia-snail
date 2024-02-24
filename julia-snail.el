@@ -442,6 +442,7 @@ MODULE can be:
   `(let ((stab (copy-syntax-table)))
      (with-syntax-table stab
        (modify-syntax-entry ?. "_")
+       (modify-syntax-entry ?! "_")
        (modify-syntax-entry ?@ "_")
        (modify-syntax-entry ?= " ")
        (modify-syntax-entry ?$ " ")
@@ -456,6 +457,8 @@ MODULE can be:
   (julia-snail--with-syntax-table
     (let ((identifier (thing-at-point 'symbol t))
           (start (car (bounds-of-thing-at-point 'symbol))))
+      (when (string-suffix-p "." identifier)
+        (setq identifier (substring identifier nil -1)))
       (if (julia-snail--bslash-before-p start)
           (concat "\\" identifier)
         identifier))))
@@ -674,11 +677,12 @@ expand-file-name on local files, and (2) returns the expanded
 form of the remote path without any host connection string
 components. Example: (julia-snail--efn \"/ssh:host:~/file.jl\")
 returns \"/home/username/file.jl\"."
-  (let* ((expanded (expand-file-name path starting-dir))
-         (remote-local-path (file-remote-p expanded 'localname)))
-    (if remote-local-path
-        remote-local-path
-      expanded)))
+  (when path
+    (let* ((expanded (expand-file-name path starting-dir))
+           (remote-local-path (file-remote-p expanded 'localname)))
+      (if remote-local-path
+          remote-local-path
+        expanded))))
 
 (defun julia-snail--add-to-perspective (buf)
   (when (and (featurep 'perspective) (bound-and-true-p persp-mode)) ; perspective-el support
@@ -779,7 +783,8 @@ returns \"/home/username/file.jl\"."
         (julia-snail--send-to-repl
          (format "JuliaSnail.start(%d%s) ; # please wait, time-to-first-plot..."
 		 (or julia-snail-remote-port julia-snail-port)
-		 (if (string-equal "docker" (file-remote-p (buffer-file-name julia-snail--repl-go-back-target) 'method))
+		 (if-let* ((file-name (buffer-file-name julia-snail--repl-go-back-target))
+                           ((string-equal "docker" (file-remote-p file-name 'method))))
 		     "; addr=\"0.0.0.0\""
 		   ""))
           :repl-buf repl-buf
@@ -975,7 +980,7 @@ nil, wait for the result and return it."
       (goto-char (point-max))
       (insert display-msg))
     (process-send-string process-buf msg)
-    (spinner-start 'progress-bar)
+    ;; (spinner-start 'progress-bar)
     (puthash reqid
              (make-julia-snail--request-tracker
               :repl-buf repl-buf
