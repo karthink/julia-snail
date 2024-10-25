@@ -2021,8 +2021,8 @@ The following keys are set:
         (advice-add 'spinner-print :around #'julia-snail--spinner-print-around)
         (setq julia-snail--imenu-fallback-index-function imenu-create-index-function)
         (setq imenu-create-index-function 'julia-snail-imenu)
-        (if (and (or (locate-library "company-quickhelp")
-                     (locate-library "corfu-doc") ; deprecated; keeping around for backwards compatibility
+        (if (and (or (featurep 'company-quickhelp)
+                     (featurep 'corfu-popupinfo) ; deprecated; keeping around for backwards compatibility
                      ;; TODO / FIXME: Implement a clean check for corfu-popupinfo, the Corfu documentation display system
                      )
                  julia-snail-completions-doc-enable)
